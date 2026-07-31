@@ -1,0 +1,174 @@
+<!-- ==========================================================
+     LOGIN PAGE
+=========================================================== -->
+
+<div id="loginContainer" class="login-container">
+
+    <!-- ===============================================
+         Left Side
+    ================================================ -->
+
+    <div class="login-left">
+
+        <div class="login-brand">
+
+            <img
+            id="companyLogo"
+            src="https://tm-storage-bucket-stage.s3.ap-south-1.amazonaws.com/Images/Truemeds+logo.jpg"
+            alt="TrueMeds Logo">
+
+            <h1>
+
+                TrueMeds
+
+            </h1>
+
+            <h2>
+
+                RTO & Reattempt Portal
+
+            </h2>
+
+            <p>
+
+                Fast • Secure • Reliable
+
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===============================================
+         Right Side
+    ================================================ -->
+
+    <div class="login-right">
+
+        <div class="login-card">
+
+            <h2>
+
+                Welcome Back
+
+            </h2>
+
+            <p>
+
+                Sign in to continue
+
+            </p>
+
+
+            <!-- Username -->
+
+            <div class="form-group">
+
+                <label>
+
+                    Username
+
+                </label>
+
+                <input
+                    type="text"
+                    id="loginUsername"
+                    class="form-control"
+                    maxlength="50"
+                    autocomplete="username"
+                    placeholder="Enter Username">
+
+            </div>
+
+
+            <!-- Password -->
+
+            <div class="form-group">
+
+                <label>
+
+                    Password
+
+                </label>
+
+                <div class="password-box">
+
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        class="form-control"
+                        maxlength="100"
+                        autocomplete="current-password"
+                        placeholder="Enter Password">
+
+                    <button
+                        type="button"
+                        id="togglePassword"
+                        class="password-toggle">
+
+                        <span class="material-symbols-outlined">
+                         visibility
+                         </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Remember Me -->
+
+            <div class="remember-row">
+
+                <label class="remember-label">
+
+                    <input
+                        type="checkbox"
+                        id="rememberMe">
+
+                    Remember Me
+
+                </label>
+
+            </div>
+
+
+            <!-- Login -->
+
+            <button
+                id="btnLogin"
+                class="primary-btn">
+
+                Login
+
+            </button>
+
+
+            <!-- Error -->
+
+            <div
+                id="loginError"
+                class="login-error hidden">
+
+            </div>
+
+
+            <!-- Footer -->
+
+            <div class="login-footer">
+
+                <span id="loginVersion">
+
+                    Version 1.0
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
