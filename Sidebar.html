@@ -1,0 +1,132 @@
+<!-- =======================================================
+     SIDEBAR
+======================================================== -->
+<button id="btnMobileMenuToggle" class="mobile-menu-btn">☰</button>
+
+<aside id="sidebar" class="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+
+        <img
+            src="https://miro.medium.com/v2/resize:fit:1100/format:webp/1*_-yhVmeDH2DDKPtq8hssZw.png"
+            alt="TrueMeds Logo"
+            class="sidebar-logo-img">
+
+        <div class="sidebar-title">
+
+            <h1>TrueMeds</h1>
+
+            <p>RTO &amp; Reattempt Portal</p>
+
+        </div>
+
+    </div>
+
+
+    <!-- Logged In User -->
+    <div class="sidebar-user">
+
+        <div
+            class="user-avatar"
+            id="userAvatar">
+
+            U
+
+        </div>
+
+        <div class="user-details">
+
+            <div
+                id="loggedUserName"
+                class="user-name">
+
+                User Name
+
+            </div>
+
+            <div
+                id="loggedUserRole"
+                class="user-role">
+
+                Rider
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Navigation -->
+    <nav class="sidebar-menu">
+
+    <button class="menu-item active" id="menuDashboard" data-page="riderDashboard">
+        <span>📊</span>
+        <span>Dashboard</span>
+    </button>
+
+    <button class="menu-item" id="menuSubmission" data-page="riderSubmission">
+        <span>📦</span>
+        <span>New Submission</span>
+    </button>
+
+    <button class="menu-item" id="menuMySubmissions" data-page="mySubmission">
+        <span>📋</span>
+        <span>My Submissions</span>
+    </button>
+
+    <button class="menu-item managerOnly hidden" id="menuPending" data-page="pendingRequest">
+        <span>⏳</span>
+        <span>Pending Requests</span>
+    </button>
+
+    <button class="menu-item managerOnly hidden" id="menuReview" data-page="reviewRequest">
+        <span>✅</span>
+        <span>Review Requests</span>
+    </button>
+
+    <button class="menu-item adminOnly hidden" id="menuAdmin" data-page="adminDashboard">
+        <span>👨‍💼</span>
+        <span>Admin Dashboard</span>
+    </button>
+
+    <button class="menu-item adminOnly hidden" id="menuRepository" data-page="adminRepository">
+        <span>📚</span>
+        <span>Repository</span>
+    </button>
+
+    <button class="menu-item" id="menuNotification" data-page="notifications">
+        <span>🔔</span>
+        <span>Notifications</span>
+        <span id="notificationBadge" class="badge hidden">0</span>
+    </button>
+
+    <button class="menu-item" id="menuSettings" data-page="settings">
+        <span>⚙</span>
+        <span>Settings</span>
+    </button>
+
+   </nav>
+
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+
+        <div id="appVersion">
+
+            Version 1.0
+
+        </div>
+
+        <button
+            id="btnLogout"
+            class="logout-btn">
+
+            Logout
+
+        </button>
+
+    </div>
+
+</aside>
