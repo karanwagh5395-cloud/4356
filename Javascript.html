@@ -1,0 +1,3662 @@
+<script>
+
+/* ==========================================================
+   GLOBAL APPLICATION
+========================================================== */
+
+const APP = {
+
+    session : null,
+
+    user : null,
+
+    dashboard : {},
+
+    currentPage : "login",
+
+    loading : false,
+
+    notifications : [],
+
+    configuration : {},
+
+    version : "1.0.0"
+
+};
+
+
+
+/* ==========================================================
+   DOM READY
+========================================================== */
+
+document.addEventListener("DOMContentLoaded", initializeApplication);
+
+
+
+/* ==========================================================
+   INITIALIZE
+========================================================== */
+
+function initializeApplication(){
+
+    APP.session = sessionStorage.getItem("rtoSession") || null;
+
+    initializeEvents();
+    initializePasswordToggle();
+    validateSession();
+    loadRememberedUser();
+    
+
+}
+
+function initializePasswordToggle() {
+
+    const password =
+        document.getElementById("loginPassword");
+
+    const button =
+        document.getElementById("togglePassword");
+
+    const icon =
+        button?.querySelector(".material-symbols-outlined");
+
+    if (!password || !button || !icon) return;
+
+    button.addEventListener("click", () => {
+
+        if (password.type === "password") {
+
+            password.type = "text";
+            icon.textContent = "visibility_off";
+
+        } else {
+
+            password.type = "password";
+            icon.textContent = "visibility";
+
+        }
+
+    });
+
+}
+/* ==========================================================
+   REMEMBER USERNAME
+========================================================== */
+
+function loadRememberedUser() {
+
+    const username =
+        localStorage.getItem("rememberUsername");
+
+    const remember =
+        localStorage.getItem("rememberMe");
+
+    if (remember === "true" && username) {
+
+        document.getElementById("loginUsername").value = username;
+
+        document.getElementById("rememberMe").checked = true;
+
+    }
+
+}
+
+function saveRememberedUser(username) {
+
+    const remember =
+        document.getElementById("rememberMe").checked;
+
+    if (remember) {
+
+        localStorage.setItem("rememberUsername", username);
+
+        localStorage.setItem("rememberMe", "true");
+
+    } else {
+
+        localStorage.removeItem("rememberUsername");
+
+        localStorage.removeItem("rememberMe");
+
+    }
+
+}
+/* ==========================================================
+   EVENTS
+========================================================== */
+
+function initializeEvents() {
+
+    /* Login */
+
+    document
+        .getElementById("btnLogin")
+        ?.addEventListener("click", login);
+
+    /* Login using Enter key */
+
+    ["loginUsername", "loginPassword"].forEach(id => {
+
+        document
+            .getElementById(id)
+            ?.addEventListener("keydown", function (e) {
+
+                if (e.key === "Enter") {
+
+                    e.preventDefault();
+
+                    login();
+
+                }
+
+            });
+
+    });
+
+    /* Logout */
+
+    document
+        .getElementById("btnLogout")
+        ?.addEventListener("click", logout);
+
+}
+/* ==========================================================
+   GLOBAL LOADER
+========================================================== */
+
+function showLoader(title = "Loading...", message = "Please wait...") {
+
+    APP.loading = true;
+
+    const overlay = document.getElementById("loaderOverlay");
+
+    if (!overlay) return;
+
+    const titleElement = document.getElementById("loaderTitle");
+    const messageElement = document.getElementById("loaderMessage");
+
+    if (titleElement) {
+        titleElement.textContent = title;
+    }
+
+    if (messageElement) {
+        messageElement.textContent = message;
+    }
+
+    overlay.classList.remove("hidden");
+    overlay.classList.add("active");
+
+}
+
+function hideLoader() {
+
+    APP.loading = false;
+
+    const overlay = document.getElementById("loaderOverlay");
+
+    if (!overlay) return;
+
+    overlay.classList.remove("active");
+    overlay.classList.add("hidden");
+
+}
+
+/* ==========================================================
+   TOAST
+========================================================== */
+
+function showToast(message,type="info"){
+
+    const container =
+        document.getElementById("toastContainer");
+
+    if(!container) return;
+
+    const toast =
+        document.createElement("div");
+
+    toast.className =
+        "toast toast-" + type;
+
+    toast.innerHTML = `
+
+        <span>${message}</span>
+
+        <button>&times;</button>
+
+    `;
+
+    toast
+        .querySelector("button")
+        .onclick = ()=>toast.remove();
+
+    container.appendChild(toast);
+
+    setTimeout(()=>{
+
+        toast.remove();
+
+    },4000);
+
+}
+/* ==========================================================
+   PAGE NAVIGATION
+========================================================== */
+
+function showPage(page) {
+
+    document.querySelectorAll(".page").forEach(section => {
+        section.classList.remove("active");
+        section.classList.add("hidden");
+    });
+
+    document.querySelectorAll(".menu-item").forEach(button => {
+        button.classList.remove("active");
+    });
+
+    const pageMap = {
+        riderDashboard: "dashboardView",
+        riderSubmission: "submissionView",
+        mySubmission: "mySubmissionView",
+        pendingRequest: "pendingView",
+        reviewRequest: "reviewView",
+        adminDashboard: "adminView",
+        adminRepository: "repositoryView",
+        notifications: "notificationView",
+        settings: "settingsView"
+    };
+
+    const view = document.getElementById(pageMap[page]);
+
+    if (view) {
+        view.classList.remove("hidden");
+        view.classList.add("active");
+    }
+
+    document
+        .querySelector(`[data-page="${page}"]`)
+        ?.classList.add("active");
+
+    APP.currentPage = page;
+}
+
+/* ==========================================================
+   API
+========================================================== */
+
+function server(functionName, ...args) {
+
+    console.log("Calling Apps Script:", functionName);
+
+    return new Promise((resolve, reject) => {
+
+        google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[functionName](...args);
+
+    });
+
+}
+
+/* ==========================================================
+   SESSION
+========================================================== */
+
+async function validateSession(){
+
+    try{
+
+        const response =
+            await server("validateSession", APP.session);
+
+        if(response.success){
+
+            APP.session = response.data.sessionId;
+
+            APP.user = response.data.user;
+
+            afterLogin();
+
+        }else{
+
+            sessionStorage.removeItem("rtoSession");
+            showLogin();
+
+        }
+
+    }catch(error){
+
+        sessionStorage.removeItem("rtoSession");
+        showLogin();
+
+    }
+
+}
+
+/* ==========================================================
+   LOGIN SCREEN
+========================================================== */
+
+function showLogin(){
+
+    document
+        .getElementById("loginPage")
+        ?.classList.remove("hidden");
+
+    document
+
+        .getElementById("loginContainer")
+
+        ?.classList.remove("hidden");
+
+    document
+
+        .getElementById("appContainer")
+
+        ?.classList.add("hidden");
+
+}
+
+
+
+/* ==========================================================
+   AFTER LOGIN
+========================================================== */
+
+function afterLogin() {
+
+    document.getElementById("loginPage")?.classList.add("hidden");
+    document.getElementById("appContainer")?.classList.remove("hidden");
+
+    loadLoggedInUser();
+
+    const role = normaliseRole(APP.user.role);
+
+    if (role === "RIDER") {
+
+        navigate("riderDashboard");
+
+    } else if (role === "MANAGER" || role === "HUB_MANAGER") {
+
+        navigate("pendingRequest");
+
+    } else if (role === "ADMIN") {
+
+        navigate("adminDashboard");
+
+    } else {
+
+        navigate("riderDashboard");
+
+    }
+
+}
+/* ==========================================================
+   USER
+========================================================== */
+
+function loadLoggedInUser(){
+
+    if (!APP.user) return;
+
+    const userName =
+        APP.user.name ||
+        APP.user.riderName ||
+        APP.user.username ||
+        "User";
+
+    const userRole =
+        APP.user.role || "";
+
+    /* Sidebar */
+
+    const nameElement =
+        document.getElementById("loggedUserName");
+
+    const roleElement =
+        document.getElementById("loggedUserRole");
+
+    if(nameElement){
+
+        nameElement.textContent = userName;
+
+    }
+
+    if(roleElement){
+
+        roleElement.textContent = userRole;
+
+    }
+
+    /* Dashboard */
+
+    const dashboardUser =
+        document.getElementById("dashboardUserName");
+
+    if(dashboardUser){
+
+        dashboardUser.textContent = userName;
+
+    }
+
+    configureRoleMenus();
+
+}
+/* ==========================================================
+   LOGIN
+========================================================== */
+
+async function login() {
+
+    const username =
+        document.getElementById("loginUsername").value.trim();
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+    if (!username) {
+
+        showToast(
+            "Username is required",
+            "warning"
+        );
+
+        return;
+
+    }
+
+    if (!password) {
+
+        showToast(
+            "Password is required",
+            "warning"
+        );
+
+        return;
+
+    }
+
+    try {
+
+        /* Show Login Loader */
+
+        showLoader(
+            "Signing In...",
+            "Authenticating your account..."
+        );
+
+        const response =
+            await server(
+                "login",
+                username,
+                password
+            );
+
+        if (response.success) {
+
+            APP.session = response.data.sessionId;
+            APP.user = response.data;
+            sessionStorage.setItem("rtoSession", APP.session);
+
+            saveRememberedUser(username);
+
+            /* Update Loader */
+
+            showLoader(
+                `Welcome, ${APP.user.name || APP.user.username || username} 👋`,
+                "Preparing your workspace..."
+            );
+
+            setTimeout(() => {
+
+    console.log("Step 1");
+
+    showToast(
+        response.message,
+        "success"
+    );
+
+    console.log("Step 2");
+
+    afterLogin();
+
+    console.log("Step 3");
+
+    hideLoader();
+
+    console.log("Step 4");
+
+}, 1200);
+
+        } else {
+
+            hideLoader();
+
+            showToast(
+                response.message,
+                "error"
+            );
+
+        }
+
+    } catch (error) {
+
+        hideLoader();
+
+        showToast(
+            error.message || "Unable to login.",
+            "error"
+        );
+
+    }
+
+}
+/* ==========================================================
+   LOGOUT
+========================================================== */
+
+async function logout(){
+
+    try{
+
+        if (APP.user?.username) {
+            await server("logout", APP.user.username);
+        }
+
+    }catch(e){}
+
+    APP.session = null;
+
+    APP.user = null;
+
+    sessionStorage.removeItem("rtoSession");
+
+    showLogin();
+
+}
+
+
+
+/* ==========================================================
+   END PART 1
+========================================================== */
+
+</script>
+<script>
+
+/* ==========================================================
+   SIDEBAR NAVIGATION
+========================================================== */
+
+function initializeNavigation(){
+
+    document.getElementById("btnMobileMenuToggle")?.addEventListener("click", () => {
+        document.getElementById("sidebar")?.classList.toggle("open");
+    });
+
+    document.querySelectorAll("[data-page]").forEach(button=>{
+
+        button.addEventListener("click",function(){
+
+            const page=this.dataset.page;
+
+            navigate(page);
+
+        });
+
+    });
+
+}
+
+
+
+function navigate(page){
+
+    showPage(page);
+
+    switch(page){
+
+        case "riderDashboard":
+
+            loadRiderDashboard();
+
+            break;
+
+        case "riderSubmission":
+
+            initializeSubmission();
+
+            break;
+
+        case "mySubmission":
+
+            loadMySubmission();
+
+            break;
+
+        case "pendingRequest":
+
+            loadPendingRequest();
+
+            break;
+
+        case "adminDashboard":
+
+            loadAdminDashboard();
+
+            break;
+
+        case "adminRepository":
+
+            initializeRepository();
+
+            break;
+
+        case "notifications":
+
+            loadNotifications();
+
+            break;
+
+        case "settings":
+
+            loadSettings();
+
+            break;
+
+    }
+
+}
+
+function initializeRepository(){
+
+    $("#txtRepositorySearch")?.focus();
+
+}
+/* ==========================================================
+   ROLE BASED MENUS
+========================================================== */
+
+function configureRoleMenus(){
+
+    document
+
+        .querySelectorAll(
+
+            ".managerOnly,.adminOnly,.superAdminOnly"
+
+        )
+
+        .forEach(element=>{
+
+            element.classList.add("hidden");
+
+        });
+
+    switch(normaliseRole(APP.user?.role)){
+
+        case "RIDER":
+
+            break;
+
+        case "HUB_MANAGER":
+
+        case "MANAGER":
+
+            document
+
+                .querySelectorAll(".managerOnly")
+
+                .forEach(element=>{
+
+                    element.classList.remove("hidden");
+
+                });
+
+            break;
+
+        case "ADMIN":
+
+            document
+
+                .querySelectorAll(
+
+                    ".managerOnly,.adminOnly"
+
+                )
+
+                .forEach(element=>{
+
+                    element.classList.remove("hidden");
+
+                });
+
+            break;
+
+        case "SUPER_ADMIN":
+
+            document
+
+                .querySelectorAll(
+
+                    ".managerOnly,.adminOnly,.superAdminOnly"
+
+                )
+
+                .forEach(element=>{
+
+                    element.classList.remove("hidden");
+
+                });
+
+            break;
+
+    }
+
+}
+
+function normaliseRole(role) {
+
+    return String(role || "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "_");
+
+}
+/* ==========================================================
+   RIDER DASHBOARD
+========================================================== */
+
+async function loadRiderDashboard(){
+
+    try{
+
+        showLoader();
+
+        const response =
+
+    await server(
+
+        "dashboardCounts",
+
+        APP.user?.username
+
+    );
+
+console.log("Dashboard Response:", response);
+
+hideLoader();
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        APP.dashboard=response.data;
+
+        populateDashboardCounts();
+
+        loadRecentSubmissions();
+
+        loadNotificationCount();
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+/* ==========================================================
+   DASHBOARD COUNTS
+========================================================== */
+
+function populateDashboardCounts(){
+
+    const counts = APP.dashboard || {};
+
+    $("#dashboardTotal").textContent =
+        counts.total || 0;
+
+    $("#dashboardPending").textContent =
+        counts.pending || 0;
+
+    $("#dashboardUnderReview").textContent =
+        counts.underReview || 0;
+
+    $("#dashboardApproved").textContent =
+        counts.approved || 0;
+
+    $("#dashboardRejected").textContent =
+        counts.rejected || 0;
+
+    /* Future Cards */
+
+    if ($("#dashboardLegitimacy")) {
+        $("#dashboardLegitimacy").textContent =
+            (counts.legitimacy ?? 0) + "%";
+    }
+
+    if ($("#dashboardLeaderboard")) {
+        $("#dashboardLeaderboard").textContent =
+            counts.leaderboardRank ?? "-";
+    }
+
+}
+
+/* ==========================================================
+   RECENT SUBMISSIONS
+========================================================== */
+
+async function loadRecentSubmissions(){
+
+    try{
+
+        const response=
+
+            await server(
+
+                "mySubmissions",
+
+                APP.user?.username
+
+            );
+
+        if(!response.success){
+
+            return;
+
+        }
+
+        renderRecentSubmissions(
+
+            response.data
+
+        );
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+function renderRecentSubmissions(data){
+
+    const tbody=
+
+        $("#recentSubmissionTable");
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=
+
+        `<tr>
+
+            <td colspan="4">
+
+                No Records Found
+
+            </td>
+
+        </tr>`;
+
+        return;
+
+    }
+
+    data.slice(0,5).forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <tr>
+
+                <td>${item.submissionId}</td>
+
+                <td>${item.orderNumber}</td>
+
+                <td>
+
+                    ${statusBadge(item.status)}
+
+                </td>
+
+                <td>${item.timestamp}</td>
+
+            </tr>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   NOTIFICATION COUNT
+========================================================== */
+
+async function loadNotificationCount(){
+
+    try{
+
+        const response=
+
+            await server(
+
+                "unreadNotificationCount",
+
+                APP.user?.username
+
+            );
+
+        if(!response.success){
+
+            return;
+
+        }
+
+        const badge=
+
+            $("#notificationBadge");
+
+        if(!badge){
+
+            return;
+
+        }
+
+        badge.textContent=
+
+            response.data;
+
+        badge.style.display=
+
+            response.data>0
+
+            ? "inline-flex"
+
+            : "none";
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   REFRESH
+========================================================== */
+
+function refreshDashboard(){
+
+    loadRiderDashboard();
+
+}
+
+
+
+/* ==========================================================
+   SESSION WATCH
+========================================================== */
+
+setInterval(async()=>{
+
+    if(!APP.session){
+
+        return;
+
+    }
+
+    try{
+
+        const response=
+
+            await server(
+
+                "validateSession",
+
+                APP.session
+
+            );
+
+        if(!response.success){
+
+            showToast(
+
+                "Session Expired",
+
+                "warning"
+
+            );
+
+            logout();
+
+        }
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+    }
+
+},300000);
+
+
+
+/* ==========================================================
+   COMMON HELPERS
+========================================================== */
+
+function $(id){
+
+    if (!id) return null;
+
+    return id.startsWith("#")
+        ? document.querySelector(id)
+        : document.getElementById(id);
+
+}
+
+
+
+/*============================================================
+    STATUS BADGE
+============================================================*/
+
+function statusBadge(status) {
+
+    status = String(status || "").trim();
+
+    let css = "badge-secondary";
+    let icon = "";
+
+    switch (status.toUpperCase()) {
+
+        case "SUBMITTED":
+            css = "badge-primary";
+            icon = "🟡 ";
+            break;
+
+        case "UNDER REVIEW":
+            css = "badge-warning";
+            icon = "🔵 ";
+            break;
+
+        case "APPROVED":
+            css = "badge-success";
+            icon = "🟢 ";
+            break;
+
+        case "REJECTED":
+            css = "badge-danger";
+            icon = "🔴 ";
+            break;
+
+    }
+
+    return `
+        <span class="badge ${css}">
+            ${icon}${status}
+        </span>
+    `;
+
+}
+
+/* ==========================================================
+   INITIALIZATION
+========================================================== */
+
+document.addEventListener(
+
+    "DOMContentLoaded",
+
+    ()=>{
+
+        initializeNavigation();
+
+    }
+
+);
+
+/* ==========================================================
+   END PART 2
+========================================================== */
+
+</script>
+<script>
+
+/* ==========================================================
+   RIDER SUBMISSION
+========================================================== */
+
+async function initializeSubmission(){
+
+    clearSubmissionForm();
+
+    await loadReasons();
+
+    const orderBox = $("#txtOrderNumber");
+
+    if(orderBox){
+
+        /* ---------- Typing ---------- */
+
+        orderBox.oninput = function(){
+
+            this.value = this.value
+                .replace(/[^A-Za-z0-9]/g,"")
+                .toUpperCase()
+                .substring(0,10);
+
+        };
+
+        /* ---------- Paste ---------- */
+
+        orderBox.onpaste = function(e){
+
+            e.preventDefault();
+
+            const text = (e.clipboardData || window.clipboardData)
+                .getData("text");
+
+            this.value = text
+                .replace(/[^A-Za-z0-9]/g,"")
+                .toUpperCase()
+                .substring(0,10);
+
+        };
+
+    }
+
+}
+
+/* ==========================================================
+   LOAD REASONS
+========================================================== */
+
+async function loadReasons(){
+
+    try{
+
+        const response = await server("getReasons", APP.user?.role);
+
+        if(!response.success){
+
+            showToast(response.message,"error");
+
+            return;
+
+        }
+
+        console.log("Reasons Response:", response.data);
+
+        APP.reasons = response.data;
+
+        const ddl = $("#ddlReason");
+
+        ddl.innerHTML = `
+            <option value="">
+                Select Reason
+            </option>
+        `;
+
+        response.data.forEach(item => {
+
+            ddl.insertAdjacentHTML(
+
+                "beforeend",
+
+                `<option value="${item.reason}">
+                    ${item.reason}
+                </option>`
+
+            );
+
+        });
+
+    }
+
+    catch(error){
+
+        showToast(error.message,"error");
+
+    }
+
+}
+
+/* ==========================================================
+   ORDER NUMBER VALIDATION
+========================================================== */
+
+function validateOrderNumber(value){
+
+    return /^[A-Za-z0-9]+$/.test(value);
+
+}
+
+
+
+/* ==========================================================
+   IMAGE PREVIEW
+========================================================== */
+
+function previewImage(input,previewId){
+
+    if(!input.files.length){
+
+        return;
+
+    }
+
+    const file = input.files[0];
+
+    const reader = new FileReader();
+
+    reader.onload=function(event){
+
+        $(previewId).src=event.target.result;
+
+    };
+
+    reader.readAsDataURL(file);
+
+}
+
+
+
+/* ==========================================================
+   IMAGE COMPRESSION
+========================================================== */
+
+function compressImage(file,maxWidth=1280,quality=.75){
+
+    return new Promise((resolve,reject)=>{
+
+        const reader=new FileReader();
+
+        reader.onload=function(event){
+
+            const image=new Image();
+
+            image.onload=function(){
+
+                const canvas=document.createElement("canvas");
+
+                let width=image.width;
+
+                let height=image.height;
+
+                if(width>maxWidth){
+
+                    height*=maxWidth/width;
+
+                    width=maxWidth;
+
+                }
+
+                canvas.width=width;
+
+                canvas.height=height;
+
+                const context=canvas.getContext("2d");
+
+                context.drawImage(
+
+                    image,
+
+                    0,
+
+                    0,
+
+                    width,
+
+                    height
+
+                );
+
+                canvas.toBlob(
+
+                    blob=>{
+
+                        resolve(blob);
+
+                    },
+
+                    "image/jpeg",
+
+                    quality
+
+                );
+
+            };
+
+            image.src=event.target.result;
+
+        };
+
+        reader.onerror=reject;
+
+        reader.readAsDataURL(file);
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   UPLOAD FILE
+========================================================== */
+
+async function uploadFile(file, folderName){
+
+    const compressed =
+        await compressImage(file);
+
+    return new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.onload = function(event){
+
+            server(
+                "uploadFile",
+                event.target.result,
+                file.name,
+                folderName
+            )
+            .then(response => {
+
+                if (!response.success){
+
+                    reject(new Error(response.message));
+                    return;
+
+                }
+
+                resolve(response.data.fileUrl);
+
+            })
+            .catch(reject);
+
+        };
+
+        reader.readAsDataURL(compressed);
+
+    });
+
+}
+
+/* ==========================================================
+   SUBMIT REQUEST
+========================================================== */
+
+async function submitRequest() {
+
+    console.log("submitRequest() started");
+
+    const orderNumber =
+        $("#txtOrderNumber")
+        .value
+        .trim()
+        .toUpperCase();
+
+    const reason =
+        $("#ddlReason")
+        .value;
+
+    const mandatory =
+        $("#mandatoryProof")
+        .files[0];
+
+    const optional =
+        $("#optionalProof")
+        .files[0];
+
+    if (!orderNumber) {
+
+        showToast(
+            "Order Number is required",
+            "warning"
+        );
+
+        return;
+
+    }
+
+    if (!validateOrderNumber(orderNumber)) {
+
+        showToast(
+            "Order Number should contain only letters and numbers.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+    if (!reason) {
+
+        showToast(
+            "Please select a reason.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+            const config =
+                APP.reasons.find(r => r.reason === reason);
+
+            if (config?.mandatoryProof && !mandatory) {
+
+                showToast(
+                    "Mandatory proof is required.",
+                    "warning"
+                );
+
+                return;
+
+            }
+
+    try {
+
+        showLoader();
+
+                /* ---------- Upload Mandatory Proof ---------- */
+
+                let mandatoryUpload = "";
+
+                if (mandatory) {
+
+                    mandatoryUpload =
+                        await uploadFile(
+                            mandatory,
+                            "Mandatory Proofs"
+                        );
+
+                }
+
+                /* ---------- Upload Optional Proof ---------- */
+
+                let optionalUpload = "";
+
+                if (optional) {
+
+                    optionalUpload =
+                        await uploadFile(
+                            optional,
+                            "Optional Proofs"
+                        );
+
+                }
+
+        /* ---------- Create Submission ---------- */
+
+        const response =
+            await server(
+                "createSubmission",
+                {
+                    orderNumber: orderNumber,
+                    username: APP.user?.username,
+                    reason: reason,
+                    mandatoryProof: mandatoryUpload,
+                    optionalProof: optionalUpload
+                }
+            );
+
+        hideLoader();
+
+        if (response.success) {
+
+            showToast(
+                "Submission Created Successfully",
+                "success"
+            );
+
+            clearSubmissionForm();
+
+            loadRiderDashboard();
+
+        } else {
+
+            showToast(
+                response.message,
+                "error"
+            );
+
+        }
+
+    } catch (error) {
+
+        hideLoader();
+
+        showToast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+/* ==========================================================
+   CLEAR FORM
+========================================================== */
+
+function clearSubmissionForm(){
+
+    console.log("txtOrderNumber", $("#txtOrderNumber"));
+    console.log("ddlReason", $("#ddlReason"));
+    console.log("mandatoryProof", $("#mandatoryProof"));
+    console.log("optionalProof", $("#optionalProof"));
+    console.log("mandatoryPreview", $("#mandatoryPreview"));
+    console.log("optionalPreview", $("#optionalPreview"));
+
+    $("#txtOrderNumber").value = "";
+    $("#ddlReason").selectedIndex = 0;
+
+    $("#mandatoryProof").value = "";
+    $("#optionalProof").value = "";
+
+    $("#mandatoryPreview").src = "";
+    $("#optionalPreview").src = "";
+
+    /* ---------- Reset Proof Visibility ---------- */
+
+    const mandatory = $("#mandatoryProof");
+    const optional = $("#optionalProof");
+
+    mandatory.required = false;
+
+    mandatory.closest(".form-group").style.display = "none";
+
+    optional.closest(".form-group").style.display = "";
+
+}
+/* ==========================================================
+   EVENTS
+========================================================== */
+
+$("#mandatoryProof")?.addEventListener(
+
+    "change",
+
+    function(){
+
+        previewImage(
+
+            this,
+
+            "mandatoryPreview"
+
+        );
+
+    }
+
+);
+
+$("#optionalProof")?.addEventListener(
+
+    "change",
+
+    function(){
+
+        previewImage(
+
+            this,
+
+            "optionalPreview"
+
+        );
+
+    }
+
+);
+
+/* ==========================================================
+   REASON CHANGE
+========================================================== */
+
+$("#ddlReason").addEventListener("change", function () {
+
+    const selectedReason = $("#ddlReason").value;
+
+    const config = APP.reasons.find(r => r.reason === selectedReason);
+
+    console.log(selectedReason);
+    console.log(config);
+
+    const mandatoryGroup = $("#mandatoryProofGroup");
+    const optionalGroup = $("#optionalProofGroup");
+
+    if (!config) {
+
+        mandatoryGroup.style.display = "none";
+        optionalGroup.style.display = "";
+
+        return;
+
+    }
+
+    mandatoryGroup.style.display =
+        config.mandatoryProof ? "" : "none";
+
+    optionalGroup.style.display =
+        config.optionalProof ? "" : "none";
+
+    $("#mandatoryProof").required =
+        config.mandatoryProof;
+
+    if (!config.mandatoryProof) {
+
+        $("#mandatoryProof").value = "";
+        $("#mandatoryPreview").src = "";
+
+    }
+
+    if (!config.optionalProof) {
+
+        $("#optionalProof").value = "";
+        $("#optionalPreview").src = "";
+
+    }
+
+});
+
+
+/* ==========================================================
+   END PART 3
+========================================================== */
+
+</script>
+<script>
+
+/* ==========================================================
+   MY SUBMISSIONS
+========================================================== */
+
+async function loadMySubmission(){
+
+    try{
+
+        showLoader();
+
+        const response=await server("mySubmissions", APP.user?.username);
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(response.message,"error");
+
+            return;
+
+        }
+
+        renderMySubmission(response.data);
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(error.message,"error");
+
+    }
+
+}
+
+
+
+function renderMySubmission(data){
+
+    const tbody=$("#mySubmissionTableBody");
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=`
+        <tr>
+            <td colspan="8">
+                No submissions found.
+            </td>
+        </tr>`;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+            <tr>
+
+                <td>${item.submissionId}</td>
+
+                <td>${item.orderNumber}</td>
+
+                <td>${item.reason}</td>
+
+                <td>${statusBadge(item.status)}</td>
+
+                <td>${item.assignedTo||"-"}</td>
+
+                <td>${item.timestamp}</td>
+
+                <td>${item.reviewedOn||"-"}</td>
+
+                <td>
+
+                    <button
+                        class="secondary-btn"
+                        onclick="openSubmission('${item.submissionId}')">
+
+                        View
+
+                    </button>
+
+                </td>
+
+            </tr>
+            `
+
+        );
+
+    });
+
+}
+
+/* ==========================================================
+   OPEN SUBMISSION
+========================================================== */
+
+async function openSubmission(submissionId){
+
+    try{
+
+        showLoader();
+
+        const response =
+            await server(
+                "getSubmission",
+                submissionId
+            );
+
+        console.log("===== GET SUBMISSION RESPONSE =====");
+        console.log(response);
+        console.log("===================================");
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+                response.message,
+                "error"
+            );
+
+            return;
+
+        }
+
+        console.log("populateReviewScreen() Data:");
+        console.log(response.data);
+
+          navigate("reviewRequest");
+
+          setTimeout(() => {
+
+              populateReviewScreen(
+                  response.data,
+                  false
+              );
+
+          }, 50);
+
+    }
+
+    catch(error){
+
+        console.error("OPEN SUBMISSION ERROR:");
+        console.error(error);
+
+        hideLoader();
+
+        showToast(
+            error.message,
+            "error"
+        );
+
+    }
+
+}
+
+/* ==========================================================
+   PENDING REQUESTS
+========================================================== */
+
+async function loadPendingRequest(){
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "pendingRequests"
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        renderPendingRequest(
+
+            response.data
+
+        );
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+
+
+function renderPendingRequest(data){
+
+    const tbody=$("#pendingTableBody");
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=`
+
+        <tr>
+
+            <td colspan="10">
+
+                No Pending Requests
+
+            </td>
+
+        </tr>
+
+        `;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <tr>
+
+                <td>${item.submissionId}</td>
+
+                <td>${item.orderNumber}</td>
+
+                <td>${item.riderName}</td>
+
+                <td>${item.zone}</td>
+
+                <td>${item.warehouse}</td>
+
+                <td>${item.lmHub}</td>
+
+                <td>${item.reason}</td>
+
+                <td>${statusBadge(item.status)}</td>
+
+                <td>${item.timestamp}</td>
+
+                <td>
+
+                    <button
+
+                        class="primary-btn"
+
+                        onclick="reviewSubmission('${item.submissionId}')">
+
+                        Review
+
+                    </button>
+
+                </td>
+
+            </tr>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   REVIEW REQUEST
+========================================================== */
+
+async function reviewSubmission(submissionId){
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "getSubmission",
+
+                submissionId
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        populateReviewScreen(
+
+            response.data,
+
+            true
+
+        );
+
+        navigate(
+
+            "reviewRequest"
+
+        );
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+/* ==========================================================
+   GOOGLE DRIVE IMAGE URL
+========================================================== */
+
+function driveImageUrl(url){
+
+    if(!url) return "";
+
+    const match = url.match(/\/d\/([^\/]+)/);
+
+    if(!match) return "";
+
+    return "https://drive.google.com/uc?export=view&id=" + match[1];
+
+}
+
+/* ==========================================================
+   POPULATE REVIEW
+========================================================== */
+
+function populateReviewScreen(data,isManager){
+
+    console.log("===== populateReviewScreen() =====");
+    console.log(data);
+
+    $("#reviewSubmissionId").textContent = data.submissionId;
+
+    $("#reviewOrderNumber").textContent = data.orderNumber;
+
+    $("#reviewRiderName").textContent = data.riderName;
+
+    $("#reviewEmployeeId").textContent = data.employeeId;
+
+    $("#reviewZone").textContent = data.zone;
+
+    $("#reviewWarehouse").textContent = data.warehouse;
+
+    $("#reviewLMHub").textContent = data.lmHub;
+
+    $("#reviewReason").textContent = data.reason;
+
+    $("#reviewStatus").innerHTML = statusBadge(data.status);
+
+    $("#reviewSubmittedOn").textContent = data.timestamp;
+
+    /************************************************
+     * Review History
+     ************************************************/
+
+    $("#reviewLatestStatus").textContent =
+        data.status || "-";
+
+    $("#reviewAssignedTo").textContent =
+        data.assignedTo || "-";
+
+    $("#reviewReviewedBy").textContent =
+        data.reviewedBy || "-";
+
+    $("#reviewReviewedOn").textContent =
+        data.reviewedOn || "-";
+
+    $("#reviewLastUpdated").textContent =
+        data.lastUpdated || "-";
+
+    $("#reviewTime").textContent =
+        data.reviewTime || "-";
+
+    /* ======================================================
+       MANDATORY PROOF
+    ====================================================== */
+
+    $("#reviewMandatoryProof").href =
+        data.mandatoryProof || "#";
+
+    $("#reviewMandatoryProof").style.display =
+        data.mandatoryProof
+            ? "inline-flex"
+            : "none";
+
+    /* ======================================================
+       OPTIONAL PROOF
+    ====================================================== */
+
+    $("#reviewOptionalProof").href =
+        data.optionalProof || "#";
+
+    $("#reviewOptionalProof").style.display =
+        data.optionalProof
+            ? "inline-flex"
+            : "none";
+
+    /* ======================================================
+       REMARKS
+    ====================================================== */
+
+    const remarksBox = $("#txtManagerRemarks");
+
+        if (remarksBox) {
+
+            remarksBox.value = "";
+
+        }
+
+    /* ======================================================
+       MANAGER BUTTONS
+    ====================================================== */
+
+    $("#btnApproveSubmission").style.display =
+        isManager
+            ? "inline-block"
+            : "none";
+
+    $("#btnRejectSubmission").style.display =
+        isManager
+            ? "inline-block"
+            : "none";
+
+}
+
+/* ==========================================================
+   APPROVE
+========================================================== */
+
+async function approveSubmission(){
+
+    await submitReview(
+
+        "Approved"
+
+    );
+
+}
+
+
+
+/* ==========================================================
+   REJECT
+========================================================== */
+
+async function rejectSubmission(){
+
+    await submitReview(
+
+        "Rejected"
+
+    );
+
+}
+
+
+
+/* ==========================================================
+   SAVE REVIEW
+========================================================== */
+
+async function submitReview(status){
+
+    const submissionId=
+
+        $("#reviewSubmissionId").textContent;
+
+    const remarks=
+
+        $("#txtManagerRemarks")
+
+        .value
+
+        .trim();
+
+    if(!remarks){
+
+        showToast(
+
+            "Remarks are required.",
+
+            "warning"
+
+        );
+
+        return;
+
+    }
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "updateStatus",
+
+                submissionId,
+
+                status,
+
+                APP.user?.username,
+
+                remarks
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        showToast(
+
+            "Review Saved Successfully",
+
+            "success"
+
+        );
+
+        loadPendingRequest();
+
+        navigate(
+
+            "pendingRequest"
+
+        );
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   BUTTON EVENTS
+========================================================== */
+
+$("#btnApproveSubmission")
+
+?.addEventListener(
+
+    "click",
+
+    approveSubmission
+
+);
+
+
+
+$("#btnRejectSubmission")
+
+?.addEventListener(
+
+    "click",
+
+    rejectSubmission
+
+);
+
+
+
+$("#btnBackPending")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "pendingRequest"
+
+        );
+
+    }
+
+);
+
+
+
+$("#btnCancelReview")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "pendingRequest"
+
+        );
+
+    }
+
+);
+
+/* ==========================================================
+   RIDER SUBMISSION EVENTS
+========================================================== */
+
+$("#btnSubmitRequest")
+
+?.addEventListener(
+
+    "click",
+
+    submitRequest
+
+);
+
+$("#btnResetSubmission")
+
+?.addEventListener(
+
+    "click",
+
+    clearSubmissionForm
+
+);
+
+
+/* ==========================================================
+   END PART 4
+========================================================== */
+
+</script>
+<script>
+
+/* ==========================================================
+   ADMIN DASHBOARD
+========================================================== */
+
+async function loadAdminDashboard(){
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "adminDashboard"
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        populateAdminDashboard(
+
+            response.data
+
+        );
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+
+
+function populateAdminDashboard(data){
+
+    $("#adminTotalRequests").textContent=
+
+        data.total||0;
+
+    $("#adminPendingRequests").textContent=
+
+        data.pending||0;
+
+    $("#adminApprovedRequests").textContent=
+
+        data.approved||0;
+
+    $("#adminRejectedRequests").textContent=
+
+        data.rejected||0;
+
+    renderSummaryTable(
+
+        "zoneSummaryBody",
+
+        data.zoneWise||[]
+
+    );
+
+    renderSummaryTable(
+
+        "warehouseSummaryBody",
+
+        data.warehouseWise||[]
+
+    );
+
+    renderSummaryTable(
+
+        "hubSummaryBody",
+
+        data.hubWise||[]
+
+    );
+
+    renderRecentActivity(
+
+        data.recentActivity||[]
+
+    );
+
+}
+
+
+
+/* ==========================================================
+   SUMMARY TABLE
+========================================================== */
+
+function renderSummaryTable(id,data){
+
+    const tbody=$(id);
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=
+
+        `<tr>
+
+            <td colspan="5">
+
+                No Records Found
+
+            </td>
+
+        </tr>`;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <tr>
+
+                <td>${item.name}</td>
+
+                <td>${item.total}</td>
+
+                <td>${item.Submitted}</td>
+
+                <td>${item.approved}</td>
+
+                <td>${item.rejected}</td>
+
+            </tr>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   RECENT ACTIVITY
+========================================================== */
+
+function renderRecentActivity(data){
+
+    const tbody=$("#recentActivityBody");
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=
+
+        `<tr>
+
+            <td colspan="6">
+
+                No Activity
+
+            </td>
+
+        </tr>`;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <tr>
+
+                <td>${item.submissionId}</td>
+
+                <td>${item.orderNumber}</td>
+
+                <td>${item.riderName}</td>
+
+                <td>${statusBadge(item.status)}</td>
+
+                <td>${item.reviewedBy||"-"}</td>
+
+                <td>${item.reviewedOn||"-"}</td>
+
+            </tr>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   ADMIN REPOSITORY
+========================================================== */
+
+async function searchRepository(){
+
+    const type=
+
+        $("#ddlRepositorySearchType").value;
+
+    const value=
+
+        $("#txtRepositorySearch")
+
+        .value
+
+        .trim();
+
+    if(!value){
+
+        showToast(
+
+            "Enter search value.",
+
+            "warning"
+
+        );
+
+        return;
+
+    }
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "repositorySearch",
+
+                type,
+
+                value
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        renderRepository(
+
+            response.data
+
+        );
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+
+
+function renderRepository(data){
+
+    const tbody=$("#repositoryTableBody");
+
+    tbody.innerHTML="";
+
+    if(!data.length){
+
+        tbody.innerHTML=
+
+        `<tr>
+
+            <td colspan="10">
+
+                No Records Found
+
+            </td>
+
+        </tr>`;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        tbody.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <tr>
+
+                <td>${item.submissionId}</td>
+
+                <td>${item.orderNumber}</td>
+
+                <td>${item.riderName}</td>
+
+                <td>${item.employeeId}</td>
+
+                <td>${item.zone}</td>
+
+                <td>${item.warehouse}</td>
+
+                <td>${item.lmHub}</td>
+
+                <td>${statusBadge(item.status)}</td>
+
+                <td>${item.reviewedBy||"-"}</td>
+
+                <td>${item.reviewedOn||"-"}</td>
+
+            </tr>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   NOTIFICATIONS
+========================================================== */
+
+async function loadNotifications(){
+
+    try{
+
+        const response=
+
+            await server(
+
+                "notifications",
+
+                APP.user?.username
+
+            );
+
+        if(!response.success){
+
+            return;
+
+        }
+
+        renderNotifications(
+
+            response.data
+
+        );
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+function renderNotifications(data){
+
+    const container=
+
+        $("#notificationList");
+
+    container.innerHTML="";
+
+    if(!data.length){
+
+        container.innerHTML=
+
+        `<div class="notification-empty">
+
+            No Notifications
+
+        </div>`;
+
+        return;
+
+    }
+
+    data.forEach(item=>{
+
+        container.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+
+            <div class="notification-item ${item.read ? "" : "unread"}">
+
+                <div class="notification-title">
+
+                    ${item.title}
+
+                </div>
+
+                <div class="notification-message">
+
+                    ${item.message}
+
+                </div>
+
+                <div class="notification-footer">
+
+                    <span>
+
+                        ${item.date}
+
+                    </span>
+
+                    ${!item.read
+
+                    ? `<button
+                            class="secondary-btn"
+                            onclick="markNotificationRead('${item.id}')">
+
+                            Mark Read
+
+                       </button>`
+
+                    : ""}
+
+                </div>
+
+            </div>
+
+            `
+
+        );
+
+    });
+
+}
+
+
+
+async function markNotificationRead(id){
+
+    await server(
+
+        "markNotificationRead",
+
+        id
+
+    );
+
+    loadNotifications();
+
+    loadNotificationCount();
+
+}
+
+
+
+async function markAllNotificationsRead(){
+
+    await server(
+
+        "markAllNotificationsRead",
+
+        APP.user?.username
+
+    );
+
+    loadNotifications();
+
+    loadNotificationCount();
+
+}
+
+
+
+/* ==========================================================
+   SETTINGS
+========================================================== */
+
+function loadSettings(){
+
+    if(!APP.user){
+
+        return;
+
+    }
+
+    $("#settingUsername").value=
+
+        APP.user.username;
+
+    $("#settingRiderName").value=
+
+        APP.user.riderName;
+
+    $("#settingEmployeeId").value=
+
+        APP.user.employeeId;
+
+    $("#settingRole").value=
+
+        APP.user.role;
+
+    $("#settingZone").value=
+
+        APP.user.zone;
+
+    $("#settingWarehouse").value=
+
+        APP.user.warehouse;
+
+    $("#settingHub").value=
+
+        APP.user.lmHub;
+
+    $("#settingStatus").value=
+
+        APP.user.status;
+
+}
+
+
+
+/* ==========================================================
+   CHANGE PASSWORD
+========================================================== */
+
+async function changePassword(){
+
+    const current=
+
+        $("#currentPassword").value;
+
+    const password=
+
+        $("#newPassword").value;
+
+    const confirm=
+
+        $("#confirmPassword").value;
+
+    if(password!==confirm){
+
+        showToast(
+
+            "Passwords do not match.",
+
+            "warning"
+
+        );
+
+        return;
+
+    }
+
+    try{
+
+        showLoader();
+
+        const response=
+
+            await server(
+
+                "changePassword",
+
+                APP.user?.username,
+
+                current,
+
+                password
+
+            );
+
+        hideLoader();
+
+        if(!response.success){
+
+            showToast(
+
+                response.message,
+
+                "error"
+
+            );
+
+            return;
+
+        }
+
+        showToast(
+
+            "Password Changed Successfully",
+
+            "success"
+
+        );
+
+        $("#currentPassword").value="";
+
+        $("#newPassword").value="";
+
+        $("#confirmPassword").value="";
+
+    }
+
+    catch(error){
+
+        hideLoader();
+
+        showToast(
+
+            error.message,
+
+            "error"
+
+        );
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   EVENTS
+========================================================== */
+
+$("#btnRepositorySearch")
+
+?.addEventListener(
+
+    "click",
+
+    searchRepository
+
+);
+
+
+
+$("#btnMarkAllRead")
+
+?.addEventListener(
+
+    "click",
+
+    markAllNotificationsRead
+
+);
+
+
+
+$("#btnChangePassword")
+
+?.addEventListener(
+
+    "click",
+
+    changePassword
+
+);
+
+/* ==========================================================
+   END PART 5
+========================================================== */
+
+</script>
+<script>
+
+/* ==========================================================
+   GLOBAL REFRESH
+========================================================== */
+
+function refreshCurrentPage(){
+
+    switch(APP.currentPage){
+
+        case "riderDashboard":
+
+            loadRiderDashboard();
+
+            break;
+
+        case "riderSubmission":
+
+            initializeSubmission();
+
+            break;
+
+        case "mySubmission":
+
+            loadMySubmission();
+
+            break;
+
+        case "pendingRequest":
+
+            loadPendingRequest();
+
+            break;
+
+        case "reviewRequest":
+
+            break;
+
+        case "adminDashboard":
+
+            loadAdminDashboard();
+
+            break;
+
+        case "adminRepository":
+
+            break;
+
+        case "notifications":
+
+            loadNotifications();
+
+            break;
+
+        case "settings":
+
+            loadSettings();
+
+            break;
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   SEARCH FILTERS
+========================================================== */
+
+function filterTable(inputId,tableBodyId){
+
+    const value=
+
+        $(inputId)
+
+        .value
+
+        .toLowerCase()
+
+        .trim();
+
+    const rows=
+
+        $(tableBodyId)
+
+        .querySelectorAll("tr");
+
+    rows.forEach(row=>{
+
+        row.style.display=
+
+            row.innerText
+
+                .toLowerCase()
+
+                .includes(value)
+
+            ? ""
+
+            : "none";
+
+    });
+
+}
+
+
+
+/* ==========================================================
+   FORMAT DATE
+========================================================== */
+
+function formatDate(date){
+
+    if(!date){
+
+        return "-";
+
+    }
+
+    return new Date(date)
+
+        .toLocaleString();
+
+}
+
+
+
+/* ==========================================================
+   FORMAT NULL
+========================================================== */
+
+function safe(value){
+
+    return value || "-";
+
+}
+
+
+
+/* ==========================================================
+   RESET FORM
+========================================================== */
+
+function resetForm(formId){
+
+    const form=$(formId);
+
+    if(form){
+
+        form.reset();
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   CONFIRM
+========================================================== */
+
+function confirmAction(message){
+
+    return window.confirm(message);
+
+}
+
+
+
+/* ==========================================================
+   IMAGE POPUP
+========================================================== */
+
+function openImage(src){
+
+    if(!src){
+
+        return;
+
+    }
+
+    window.open(
+
+        src,
+
+        "_blank"
+
+    );
+
+}
+
+
+
+/* ==========================================================
+   COPY TEXT
+========================================================== */
+
+async function copyText(text){
+
+    try{
+
+        await navigator.clipboard.writeText(text);
+
+        showToast(
+
+            "Copied",
+
+            "success"
+
+        );
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+
+/* ==========================================================
+   REFRESH BUTTONS
+========================================================== */
+
+$("#btnRefreshDashboard")
+
+?.addEventListener(
+
+    "click",
+
+    loadRiderDashboard
+
+);
+
+
+
+$("#btnRefreshMySubmissions")
+
+?.addEventListener(
+
+    "click",
+
+    loadMySubmission
+
+);
+
+
+
+$("#btnRefreshPending")
+
+?.addEventListener(
+
+    "click",
+
+    loadPendingRequest
+
+);
+
+
+
+$("#btnRefreshAdminDashboard")
+
+?.addEventListener(
+
+    "click",
+
+    loadAdminDashboard
+
+);
+
+
+
+$("#btnRefreshNotifications")
+
+?.addEventListener(
+
+    "click",
+
+    loadNotifications
+
+);
+
+
+
+/* ==========================================================
+   SEARCH EVENTS
+========================================================== */
+
+$("#txtSearchSubmission")
+
+?.addEventListener(
+
+    "keyup",
+
+    ()=>{
+
+        filterTable(
+
+            "txtSearchSubmission",
+
+            "mySubmissionTableBody"
+
+        );
+
+    }
+
+);
+
+
+
+$("#txtPendingSearch")
+
+?.addEventListener(
+
+    "keyup",
+
+    ()=>{
+
+        filterTable(
+
+            "txtPendingSearch",
+
+            "pendingTableBody"
+
+        );
+
+    }
+
+);
+
+
+
+$("#txtRepositorySearch")
+
+?.addEventListener(
+
+    "keypress",
+
+    function(event){
+
+        if(event.key==="Enter"){
+
+            searchRepository();
+
+        }
+
+    }
+
+);
+/* ==========================================================
+   QUICK ACTIONS
+========================================================== */
+
+$("#quickNewSubmission")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "riderSubmission"
+
+        );
+
+    }
+
+);
+
+
+
+$("#quickMySubmissions")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "mySubmission"
+
+        );
+
+    }
+
+);
+
+
+
+$("#quickPending")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "pendingRequest"
+
+        );
+
+    }
+
+);
+
+
+
+$("#quickRepository")
+
+?.addEventListener(
+
+    "click",
+
+    ()=>{
+
+        navigate(
+
+            "adminRepository"
+
+        );
+
+    }
+
+);
+
+
+
+/* ==========================================================
+   WINDOW ERROR
+========================================================== */
+
+window.addEventListener(
+
+    "error",
+
+    function(event){
+
+        console.error(event.error);
+
+    }
+
+);
+
+
+
+/* ==========================================================
+   UNHANDLED PROMISE
+========================================================== */
+
+window.addEventListener(
+
+    "unhandledrejection",
+
+    function(event){
+
+        console.error(
+
+            event.reason
+
+        );
+
+    }
+
+);
+
+
+/* ==========================================================
+   END OF JAVASCRIPT
+========================================================== */
+
+</script>
