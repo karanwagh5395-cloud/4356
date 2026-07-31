@@ -1,0 +1,250 @@
+<!-- ============================================================
+     NEW SUBMISSION
+============================================================= -->
+
+<div id="submissionContainer" class="submission-container">
+
+    <!-- ===================================================== -->
+    <!-- Page Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                New Submission
+
+            </h1>
+
+            <p>
+
+                Submit a new RTO / Reattempt request.
+
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- Submission Form -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <!-- Order Number -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Order Number
+                        <span class="required">*</span>
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="txtOrderNumber"
+                        class="form-control"
+                        maxlength="10"
+                        autocomplete="off"
+                        placeholder="Enter Order Number">
+
+                    <small>
+
+                        Only letters and numbers are allowed.
+
+                    </small>
+
+                </div>
+
+
+                <!-- Reason -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Reason
+                        <span class="required">*</span>
+
+                    </label>
+
+                    <select
+                        id="ddlReason"
+                        class="form-control">
+
+                        <option value="">
+
+                            Select Reason
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Mandatory Proof -->
+
+                <div class="form-group" id="mandatoryProofGroup">
+
+                    <label>
+
+                        Mandatory Proof
+                        <span class="required">*</span>
+
+                    </label>
+
+                <input
+                    type="file"
+                    id="mandatoryProof"
+                    class="form-control"
+                    accept="image/*,video/*,audio/*,application/pdf">
+
+                <small>
+
+                    Supported: Image, Video, Audio & PDF
+
+                </small>
+
+                <div
+                    id="mandatoryProgress"
+                    class="upload-progress hidden">
+
+                    <div class="upload-progress-bar"></div>
+
+                </div>
+
+                </div>
+
+
+                <!-- Optional Proof -->
+
+                <div class="form-group" id="optionalProofGroup">
+
+                    <label>
+
+                        Optional Proof
+
+                    </label>
+
+                <input
+                    type="file"
+                    id="optionalProof"
+                    class="form-control"
+                    accept="image/*,video/*,audio/*,application/pdf">
+
+                <small>
+
+                    Supported: Image, Video, Audio & PDF
+
+                </small>
+
+                <div
+                    id="optionalProgress"
+                    class="upload-progress hidden">
+
+                    <div class="upload-progress-bar"></div>
+
+                </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+<!-- =====================================================
+     Attachment Preview
+===================================================== -->
+
+<div class="card">
+
+    <div class="card-header">
+
+        Attachment Preview
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="preview-grid">
+
+            <div>
+
+                <p>
+
+                    Mandatory Proof
+
+                </p>
+
+                <div
+                    id="mandatoryPreview"
+                    class="file-preview">
+
+                    No file selected
+
+                </div>
+
+            </div>
+
+            <div>
+
+                <p>
+
+                    Optional Proof
+
+                </p>
+
+                <div
+                    id="optionalPreview"
+                    class="file-preview">
+
+                    No file selected
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <!-- ===================================================== -->
+    <!-- Action Buttons -->
+    <!-- ===================================================== -->
+
+    <div class="button-row">
+
+        <button
+            id="btnSubmitRequest"
+            class="primary-btn">
+
+            Submit Request
+
+        </button>
+
+        <button
+            id="btnResetSubmission"
+            class="secondary-btn">
+
+            Reset
+
+        </button>
+
+    </div>
+
+</div>
