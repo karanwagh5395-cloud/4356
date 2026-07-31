@@ -1,0 +1,179 @@
+<!-- ============================================================
+     REPOSITORY
+============================================================= -->
+
+<div id="repositoryContainer" class="page-container">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                Repository Search
+
+            </h1>
+
+            <p>
+
+                Search archived submissions across all repository files.
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <button
+                id="btnRepositorySearch"
+                class="primary-btn">
+
+                Search
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Search Filters -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>
+
+                        Search By
+
+                    </label>
+
+                    <select
+                        id="ddlRepositorySearchType"
+                        class="form-control">
+
+                        <option value="submission">
+
+                            Submission ID
+
+                        </option>
+
+                        <option value="order">
+
+                            Order Number
+
+                        </option>
+
+                        <option value="employee">
+
+                            Employee ID
+
+                        </option>
+
+                        <option value="username">
+
+                            Username
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Search Value
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="txtRepositorySearch"
+                        class="form-control"
+                        autocomplete="off"
+                        placeholder="Enter search value">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Search Results -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            Search Results
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table
+                    id="repositoryTable"
+                    class="table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Submission ID</th>
+                            <th>Order Number</th>
+                            <th>Rider Name</th>
+                            <th>Employee ID</th>
+                            <th>Zone</th>
+                            <th>Warehouse</th>
+                            <th>LM Hub</th>
+                            <th>Status</th>
+                            <th>Reviewed By</th>
+                            <th>Reviewed On</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="repositoryTableBody">
+
+                        <tr>
+
+                            <td colspan="10">
+
+                                No records found.
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
